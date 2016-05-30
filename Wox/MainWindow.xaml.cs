@@ -52,6 +52,20 @@ namespace Wox
             WindowIntelopHelper.DisableControlBox(this);
             ThemeManager.Instance.ChangeTheme(_settings.Theme);
             InitializeNotifyIcon();
+
+            _viewModel.PropertyChanged += (o, e) =>
+             {
+                 if (e.PropertyName == nameof(MainViewModel.MainWindowVisibility))
+                 {
+                     if (_viewModel.MainWindowVisibility.IsVisible())
+                     {
+                         Activate();
+                         QueryTextBox.Focus();
+                         _settings.ActivateTimes++;
+                     }
+                 }
+             };
+
         }
 
         private void InitializeNotifyIcon()

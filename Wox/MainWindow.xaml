@@ -19,8 +19,6 @@
         Loaded="OnLoaded"
         Closing="OnClosing"
         Drop="OnDrop"
-        SizeChanged="OnSizeChanged"
-        IsVisibleChanged="OnMainWindowVisible"
         Deactivated="OnDeactivated"
         PreviewKeyDown="OnKeyDown"
         Visibility="{Binding MainWindowVisibility, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

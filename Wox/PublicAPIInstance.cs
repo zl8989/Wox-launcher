@@ -25,7 +25,7 @@ namespace Wox
         {
             _settingsVM = settingsVM;
             _mainVM = mainVM;
-            GlobalHotkey.Instance.hookedKeyboardCallback += KListener_hookedKeyboardCallback;
+            //GlobalHotkey.Instance.hookedKeyboardCallback += KListener_hookedKeyboardCallback;
             WebRequest.RegisterPrefix("data", new DataWebRequestFactory());
 
         }
