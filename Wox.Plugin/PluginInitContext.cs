@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Wox.Plugin
+﻿namespace Wox.Plugin
 {
     public class PluginInitContext
     {
@@ -10,5 +8,7 @@ namespace Wox.Plugin
         /// Public APIs for plugin invocation
         /// </summary>
         public IPublicAPI API { get; set; }
+
+        public IHttpProxy Proxy { get; set; }
     }
 }

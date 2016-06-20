@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using Wox.Core.UserSettings;
 using Wox.Plugin;
 
 namespace Wox.Core.Plugin
@@ -27,6 +28,7 @@ namespace Wox.Core.Plugin
             {
                 Method = "query",
                 Parameters = new object[] { query.Search },
+                HttpProxy = HttpProxy.Instance
             };
 
             _startInfo.Arguments = $"\"{request}\"";

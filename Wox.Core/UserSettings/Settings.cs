@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using Newtonsoft.Json;
 using Wox.Plugin;
 
-namespace Wox.Infrastructure.UserSettings
+namespace Wox.Core.UserSettings
 {
     public class Settings : BaseModel
     {
@@ -48,7 +49,12 @@ namespace Wox.Infrastructure.UserSettings
         public bool RememberLastLaunchLocation { get; set; }
         public bool IgnoreHotkeysOnFullscreen { get; set; }
 
-        public HttpProxy Proxy { get; set; } = new HttpProxy();
+        public string ProxyServer { get; set; }
+        public bool ProxyEnabled { get; set; }
+        public int ProxyPort { get; set; }
+        public string ProxyUserName { get; set; }
+        public string ProxyPassword { get; set; }
+        
     }
 
     [Obsolete]

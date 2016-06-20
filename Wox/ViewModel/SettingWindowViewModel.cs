@@ -8,11 +8,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Wox.Core.Plugin;
 using Wox.Core.Resource;
+using Wox.Core.UserSettings;
 using Wox.Helper;
 using Wox.Infrastructure;
-using Wox.Infrastructure.Http;
 using Wox.Infrastructure.Storage;
-using Wox.Infrastructure.UserSettings;
 using Wox.Plugin;
 
 namespace Wox.ViewModel
@@ -32,12 +31,6 @@ namespace Wox.ViewModel
                     OnPropertyChanged(nameof(ActivatedTimes));
                 }
             };
-
-            // happlebao todo temp fix for instance code logic
-            InternationalizationManager.Instance.Settings = Settings;
-            InternationalizationManager.Instance.ChangeLanguage(Settings.Language);
-            ThemeManager.Instance.Settings = Settings;
-            Http.Proxy = Settings.Proxy;
         }
 
         public Settings Settings { get; set; }
@@ -84,6 +77,8 @@ namespace Wox.ViewModel
                 var metadatas = plugins.Select(p => new PluginViewModel
                 {
                     PluginPair = p,
+                    Metadata = p.Metadata,
+                    Plugin = p.Plugin
                 }).ToList();
                 return metadatas;
             }
@@ -93,9 +88,23 @@ namespace Wox.ViewModel
         {
             get
             {
-                var settingProvider = SelectedPlugin.PluginPair.Plugin as ISettingProvider;
+                var settingProvider = SelectedPlugin.Plugin as ISettingProvider;
                 if (settingProvider != null)
                 {
+                    var multipleActionKeywordsProvider = settingProvider as IMultipleActionKeywords;
+                    if (multipleActionKeywordsProvider != null)
+                    {
+                        multipleActionKeywordsProvider.ActionKeywordsChanged += (o, e) =>
+                        {
+                            // update in-memory data
+                            PluginManager.UpdateActionKeywordForPlugin(SelectedPlugin.PluginPair, e.OldActionKeyword,
+                                e.NewActionKeyword);
+                            // update persistant data
+                            Settings.PluginSettings.UpdateActionKeyword(SelectedPlugin.Metadata);
+
+                            MessageBox.Show(_translater.GetTranslation("succeed"));
+                        };
+                    }
                     var control = settingProvider.CreateSettingPanel();
                     control.HorizontalAlignment = HorizontalAlignment.Stretch;
                     control.VerticalAlignment = VerticalAlignment.Stretch;
@@ -107,8 +116,6 @@ namespace Wox.ViewModel
                 }
             }
         }
-
-
 
         #endregion
 

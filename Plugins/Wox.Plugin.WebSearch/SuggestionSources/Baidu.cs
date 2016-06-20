@@ -13,27 +13,29 @@ namespace Wox.Plugin.WebSearch.SuggestionSources
 {
     public class Baidu : SuggestionSource
     {
-        private readonly Regex _reg = new Regex("window.baidu.sug\\((.*)\\)");
+        public override string Domain { get; set; } = "www.baidu.com";
 
-        public override async Task<List<string>> Suggestions(string query)
+        Regex reg = new Regex("window.baidu.sug\\((.*)\\)");
+
+        public override async Task<List<string>> GetSuggestions(string query)
         {
             string result;
 
             try
             {
                 const string api = "http://suggestion.baidu.com/su?json=1&wd=";
-                result = await Http.Get(api + Uri.EscapeUriString(query), "GB2312");
+                result = await Http.Get(api + Uri.EscapeUriString(query), Proxy, "GB2312");
             }
             catch (WebException e)
             {
                 Log.Warn("Can't get suggestion from baidu");
                 Log.Exception(e);
-                return new List<string>();
-                ;
+                return new List<string>(); ;
             }
 
             if (string.IsNullOrEmpty(result)) return new List<string>();
-            Match match = _reg.Match(result);
+
+            Match match = reg.Match(result);
             if (match.Success)
             {
                 JContainer json;
@@ -60,9 +62,8 @@ namespace Wox.Plugin.WebSearch.SuggestionSources
             return new List<string>();
         }
 
-        public override string ToString()
+        public Baidu(IHttpProxy httpProxy) : base(httpProxy)
         {
-            return "Baidu";
         }
     }
 }

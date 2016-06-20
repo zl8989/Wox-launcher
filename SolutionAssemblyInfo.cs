@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 #if DEBUG
-
 [assembly: AssemblyConfiguration("Debug")]
 [assembly: AssemblyDescription("Debug build, https://github.com/Wox-launcher/Wox")]
 #else

@@ -6,26 +6,28 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
+using JetBrains.Annotations;
 using Wox.Infrastructure;
 using Wox.Infrastructure.Storage;
+using Wox.Plugin.WebSearch.SuggestionSources;
 
 namespace Wox.Plugin.WebSearch
 {
-    public class Main : IPlugin, ISettingProvider, IPluginI18n, ISavable, IResultUpdated
+    public class Main : IPlugin, ISettingProvider, IPluginI18n, IMultipleActionKeywords, ISavable, IResultUpdated
     {
-        private PluginInitContext _context;
+        public PluginInitContext Context { get; private set; }
 
-        private readonly Settings _settings;
-        private readonly SettingsViewModel _viewModel;
+        private PluginJsonStorage<Settings> _storage;
+        private Settings _settings;
         private CancellationTokenSource _updateSource;
         private CancellationToken _updateToken;
 
         public const string Images = "Images";
-        public static readonly string ImagesDirectory;
+        public static string ImagesDirectory;
 
         public void Save()
         {
-            _viewModel.Save();
+            _storage.Save();
         }
 
         public List<Result> Query(Query query)
@@ -34,23 +36,23 @@ namespace Wox.Plugin.WebSearch
             _updateSource = new CancellationTokenSource();
             _updateToken = _updateSource.Token;
 
-            SearchSource searchSource =
-                _settings.SearchSources.FirstOrDefault(o => o.ActionKeyword == query.ActionKeyword && o.Enabled);
+            WebSearch webSearch =
+                _settings.WebSearches.FirstOrDefault(o => o.ActionKeyword == query.ActionKeyword && o.Enabled);
 
-            if (searchSource != null)
+            if (webSearch != null)
             {
                 string keyword = query.Search;
                 string title = keyword;
-                string subtitle = _context.API.GetTranslation("wox_plugin_websearch_search") + " " + searchSource.Title;
+                string subtitle = Context.API.GetTranslation("wox_plugin_websearch_search") + " " + webSearch.Title;
                 if (string.IsNullOrEmpty(keyword))
                 {
                     var result = new Result
                     {
                         Title = subtitle,
                         SubTitle = string.Empty,
-                        IcoPath = searchSource.IconPath
+                        IcoPath = webSearch.IconPath
                     };
-                    return new List<Result> {result};
+                    return new List<Result> { result };
                 }
                 else
                 {
@@ -60,15 +62,15 @@ namespace Wox.Plugin.WebSearch
                         Title = title,
                         SubTitle = subtitle,
                         Score = 6,
-                        IcoPath = searchSource.IconPath,
+                        IcoPath = webSearch.IconPath,
                         Action = c =>
                         {
-                            Process.Start(searchSource.Url.Replace("{q}", Uri.EscapeDataString(keyword)));
+                            Process.Start(webSearch.Url.Replace("{q}", Uri.EscapeDataString(keyword)));
                             return true;
                         }
                     };
                     results.Add(result);
-                    UpdateResultsFromSuggestion(results, keyword, subtitle, searchSource, query);
+                    UpdateResultsFromSuggestion(results, keyword, subtitle, webSearch, query);
                     return results;
                 }
             }
@@ -78,15 +80,14 @@ namespace Wox.Plugin.WebSearch
             }
         }
 
-        private void UpdateResultsFromSuggestion(List<Result> results, string keyword, string subtitle,
-            SearchSource searchSource, Query query)
+        private void UpdateResultsFromSuggestion(List<Result> results, string keyword, string subtitle, WebSearch webSearch, Query query)
         {
-            if (_settings.EnableSuggestion)
+            if (_settings.EnableWebSearchSuggestion)
             {
                 const int waittime = 300;
                 var task = Task.Run(async () =>
                 {
-                    var suggestions = await Suggestions(keyword, subtitle, searchSource);
+                    var suggestions = await Suggestions(keyword, subtitle, webSearch);
                     results.AddRange(suggestions);
                 }, _updateToken);
 
@@ -101,21 +102,21 @@ namespace Wox.Plugin.WebSearch
             }
         }
 
-        private async Task<IEnumerable<Result>> Suggestions(string keyword, string subtitle, SearchSource searchSource)
+        private async Task<IEnumerable<Result>> Suggestions(string keyword, string subtitle, WebSearch webSearch)
         {
-            var source = _settings.SelectedSuggestion;
+            var source = SuggestionSource.GetSuggestionSource(_settings.WebSearchSuggestionSource, Context);
             if (source != null)
             {
-                var suggestions = await source.Suggestions(keyword);
+                var suggestions = await source.GetSuggestions(keyword);
                 var resultsFromSuggestion = suggestions.Select(o => new Result
                 {
                     Title = o,
                     SubTitle = subtitle,
                     Score = 5,
-                    IcoPath = searchSource.IconPath,
+                    IcoPath = webSearch.IconPath,
                     Action = c =>
                     {
-                        Process.Start(searchSource.Url.Replace("{q}", Uri.EscapeDataString(o)));
+                        Process.Start(webSearch.Url.Replace("{q}", Uri.EscapeDataString(o)));
                         return true;
                     }
                 });
@@ -126,21 +127,18 @@ namespace Wox.Plugin.WebSearch
 
         static Main()
         {
-            var plugins = Constant.Plugins;
-            var assemblyName = typeof (Main).Assembly.GetName().Name;
-            var pluginDirectory = Path.Combine(Constant.SettingsPath, plugins, assemblyName);
+            var plugins = Infrastructure.Constant.Plugins;
+            var assemblyName = typeof(Main).Assembly.GetName().Name;
+            var pluginDirectory = Path.Combine(Infrastructure.Constant.SettingsPath, plugins, assemblyName);
             ImagesDirectory = Path.Combine(pluginDirectory, Images);
-        }
-
-        public Main()
-        {
-            _viewModel = new SettingsViewModel();
-            _settings = _viewModel.Settings;
         }
 
         public void Init(PluginInitContext context)
         {
-            _context = context;
+            Context = context;
+
+            _storage = new PluginJsonStorage<Settings>();
+            _settings = _storage.Load();
 
             var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
             var bundledImagesDirectory = Path.Combine(pluginDirectory, Images);
@@ -151,21 +149,43 @@ namespace Wox.Plugin.WebSearch
 
         public Control CreateSettingPanel()
         {
-            return new SettingsControl(_context, _viewModel);
+            return new WebSearchesSetting(this, _settings);
         }
 
         #endregion
 
         public string GetTranslatedPluginTitle()
         {
-            return _context.API.GetTranslation("wox_plugin_websearch_plugin_name");
+            return Context.API.GetTranslation("wox_plugin_websearch_plugin_name");
         }
 
         public string GetTranslatedPluginDescription()
         {
-            return _context.API.GetTranslation("wox_plugin_websearch_plugin_description");
+            return Context.API.GetTranslation("wox_plugin_websearch_plugin_description");
         }
 
+        public bool IsInstantQuery(string query) => false;
+
+        [NotifyPropertyChangedInvocator]
+        public void NotifyActionKeywordsUpdated(string oldActionKeywords, string newActionKeywords)
+        {
+            ActionKeywordsChanged?.Invoke(this, new ActionKeywordsChangedEventArgs
+            {
+                OldActionKeyword = oldActionKeywords,
+                NewActionKeyword = newActionKeywords
+            });
+        }
+
+        [NotifyPropertyChangedInvocator]
+        public void NotifyActionKeywordsAdded(string newActionKeywords)
+        {
+            ActionKeywordsChanged?.Invoke(this, new ActionKeywordsChangedEventArgs
+            {
+                NewActionKeyword = newActionKeywords
+            });
+        }
+
+        public event ActionKeywordsChangedEventHandler ActionKeywordsChanged;
         public event ResultUpdatedEventHandler ResultsUpdated;
     }
 }

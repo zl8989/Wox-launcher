@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Wox.Plugin;
 
-namespace Wox.Infrastructure.UserSettings
+namespace Wox.Core.UserSettings
 {
     public class PluginsSettings : BaseModel
     {
@@ -33,6 +33,12 @@ namespace Wox.Infrastructure.UserSettings
                     };
                 }
             }
+        }
+
+        public void UpdateActionKeyword(PluginMetadata metadata)
+        {
+            var settings = Plugins[metadata.ID];
+            settings.ActionKeywords = metadata.ActionKeywords;
         }
     }
     public class Plugin

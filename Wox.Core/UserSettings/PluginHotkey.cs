@@ -1,6 +1,6 @@
 ﻿using Wox.Plugin;
 
-namespace Wox.Infrastructure.UserSettings
+namespace Wox.Core.UserSettings
 {
     public class CustomPluginHotkey : BaseModel
     {
